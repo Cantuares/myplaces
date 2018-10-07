@@ -1,0 +1,26 @@
+{
+  "name": "maps",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "escape-string-regexp": "^1.0.5",
+    "google-maps-react": "^2.0.2",
+    "react": "^16.4.2",
+    "react-dom": "^16.4.2",
+    "react-scripts": "1.1.5",
+    "sort-by": "^1.2.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject",
+    "build-css": "node-sass --output-style compressed --include-path scss scss/app.scss src/app.css",
+    "watch-css": "nodemon -e scss -x \"npm run build-css\""
+  },
+  "devDependencies": {
+    "dompurify": "^1.0.8",
+    "node-sass": "^4.9.3",
+    "nodemon": "^1.18.4"
+  }
+}

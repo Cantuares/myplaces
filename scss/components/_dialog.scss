@@ -1,0 +1,60 @@
+.dialog {
+  max-width: 550px;
+  max-height: 450px;
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  z-index: 2;
+  margin: auto;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background-color: #fff;
+  padding: 15px;
+  border-radius: 3px;
+  border: solid 1px black;
+  &-closed {
+    display: none;
+  }
+  &-opened {
+    display: block;
+  }
+  &-header {
+    border-bottom: solid 1px #cacaca;
+    h4 {
+      margin: 0 0 10px 0;
+    }
+    height: 10%;
+  }
+  &-body {
+    height: 75%;
+    overflow-y: scroll;
+    overflow-x: hidden;
+  }
+  &-footer {
+    border-top: solid 1px #cacaca;
+    height: 15%;
+    padding: 12px 0;
+  }
+  &-bt {
+    border-radius: 2px;
+    color: #333;
+    padding: 10px 25px;
+    cursor: pointer;
+    float: right;
+    &.default {
+      border: solid 1px #9E9E9E;
+      background-color: #fff;
+    }
+  }
+  &-overlay {
+    background-color: rgba(0, 0, 0, 0.5);
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    position: fixed;
+    z-index: 1;
+  }
+}
