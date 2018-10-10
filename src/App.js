@@ -12,7 +12,8 @@ class App extends Component {
     locations: [],
     center: [38.7600957, -9.2709188],
     query: ``,
-    dialog: {}
+    dialog: {},
+    showingInfoWindow: false
   }
 
   componentDidMount() {
@@ -43,27 +44,81 @@ class App extends Component {
   }
 
   updateQuery = (query) => {
-    this.setState({ query: query.trim()})
+    this.setState({ query: query.trim(), showingInfoWindow: false})
   }
 
-  placeToGo = id => {
-    let index = this.state.locations.findIndex(location => location.id === id)
-    let location = this.state.locations[index]
-    let center = location.pos
-    this.setState({center});
+  onToggleInfo = (id) => {
+    const locations = this.state.locations.map(
+      location =>
+        id === location.id
+          ? { ...location, info_open: !location.info_open }
+          : { ...location, info_open: false }
+    )
+    this.setState({ locations, showingInfoWindow: true })
+  }
+
+  onToggleBounce = id => {
+    const bounce_location = this.state.locations.map(
+      location =>
+        id === location.id
+          ? { ...location, animation: window.google.maps.Animation.BOUNCE }
+          : location
+    )
+
+    const index = this.state.locations.findIndex(
+      location =>
+        id === location.id
+    )
+
+    this.setState({
+      locations: bounce_location,
+      center: this.state.locations[index].pos
+    })
+
+    setTimeout(() => {
+      const stop_bounce = this.state.locations.map(
+        location =>
+          id === location.id ? { ...location, animation: undefined } : location
+      );
+      this.setState({ locations: stop_bounce })
+    }, 1460);
   }
 
   onDialogOpen = async title => {
     let locations = this.state.locations
     let index = locations.findIndex(location => location.title === title)
     let location = locations[index]
-    let wikipedia = await wikipediaAPI.getDetails(title)
-    location.wikipedia = wikipedia.extract
-    this.setState({dialog: location})
+    await wikipediaAPI.getDetails(title)
+    .then(response => response.json())
+    .then(data => {
+      let key = Object.keys(data.query.pages).pop()
+      let pages = data.query.pages[key]
+      location.text = pages.extract
+      this.setState({dialog: location})
+    })
+    .catch((error) => {
+      this.setState({dialog: {
+        title: `Something went wrong!`,
+        text: `can't load wikipedia data`
+      }})
+    })
   }
 
   onDialogClose = () => {
     this.setState({dialog: {}});
+  }
+
+  onUpdateLocations = (state) => {
+    const { locations, center } = state
+    this.setState({locations})
+    if (center) this.setState({center})
+  }
+
+  onError = error => {
+    this.setState({dialog: {
+      title: `Something went wrong!`,
+      text: error
+    }})
   }
 
   render() {
@@ -93,7 +148,7 @@ class App extends Component {
           className="skip-link">skip to search bar</a>
         <div className="header">
           <Navigation
-            placeToGo={this.placeToGo}
+            onToggleBounce={this.onToggleBounce}
             updateQuery={this.updateQuery}
             locations={showingLocations}
           />
@@ -103,9 +158,13 @@ class App extends Component {
           dialog={this.state.dialog}/>
         <div tabIndex="-1" role="application" aria-label="Map from GoogleMaps" className="maps">
           <Map
+            showingInfoWindow={this.state.showingInfoWindow}
+            onToggleInfo={this.onToggleInfo}
+            onToggleBounce={this.onToggleBounce}
             onDialogOpen={this.onDialogOpen}
             center={center}
             locations={showingLocations}
+            onError={this.onError}
           />
         </div>
       </div>

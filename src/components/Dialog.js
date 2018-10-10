@@ -17,7 +17,7 @@ class Dialog extends Component {
           <div className="dialog-header">
             <h4>{this.props.dialog.title}</h4>
           </div>
-          {!this.props.dialog.wikipedia
+          {!this.props.dialog.text
           ? (
             <div className="dialog-body">
               <p>
@@ -28,7 +28,7 @@ class Dialog extends Component {
           : (
             <div
               dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(this.props.dialog.wikipedia)}}
+                __html: DOMPurify.sanitize(this.props.dialog.text)}}
               className="dialog-body">
             </div>
           )}

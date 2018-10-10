@@ -13,11 +13,6 @@ class Navigation extends Component {
     this.setState({open: !this.state.open})
   }
 
-  placeToGo = (event, id) => {
-    event.preventDefault()
-    this.props.placeToGo(id);
-  }
-
   render() {
     return (
       <div id="navigation" className="navigation">
@@ -48,7 +43,10 @@ class Navigation extends Component {
             {this.props.locations.map((location, key) => (
               <li key={key}>
                 <a
-                  onClick={event => {this.placeToGo(event, location.id)}}
+                  onClick={event => {
+                    event.preventDefault()
+                    this.props.onToggleBounce(location.id)
+                  }}
                   href="">
                     {location.title}
                   </a>
