@@ -1,7 +1,10 @@
 import React, { Component } from 'react'
+import ReactDOM from 'react-dom'
 import Navigation from './components/Navigation'
 import Map from './components/Map'
 import Dialog from './components/Dialog'
+import InfoWindow from './components/InfoWindow'
+import Marker from './components/Marker'
 import { initial_locations } from "./utils/locations"
 import escapeRegExp from 'escape-string-regexp'
 import sortBy from 'sort-by'
@@ -13,11 +16,14 @@ class App extends Component {
     center: [38.7600957, -9.2709188],
     query: ``,
     dialog: {},
-    showingInfoWindow: false
+    map: null,
+    google: null,
+    isReady: false,
+    markers: []
   }
 
   componentDidMount() {
-    this.setState({ locations: initial_locations })
+    this.setState({locations: initial_locations})
     document.addEventListener(`keyup`, this.handleKeyDown, false)
   }
 
@@ -47,59 +53,23 @@ class App extends Component {
     this.setState({ query: query.trim(), showingInfoWindow: false})
   }
 
-  onToggleInfo = (id) => {
-    const locations = this.state.locations.map(
-      location =>
-        id === location.id
-          ? { ...location, info_open: !location.info_open }
-          : { ...location, info_open: false }
-    )
-    this.setState({ locations, showingInfoWindow: true })
-  }
-
-  onToggleBounce = id => {
-    const bounce_location = this.state.locations.map(
-      location =>
-        id === location.id
-          ? { ...location, animation: window.google.maps.Animation.BOUNCE }
-          : location
-    )
-
-    const index = this.state.locations.findIndex(
-      location =>
-        id === location.id
-    )
-
-    this.setState({
-      locations: bounce_location,
-      center: this.state.locations[index].pos
-    })
-
-    setTimeout(() => {
-      const stop_bounce = this.state.locations.map(
-        location =>
-          id === location.id ? { ...location, animation: undefined } : location
-      );
-      this.setState({ locations: stop_bounce })
-    }, 1460);
-  }
-
   onDialogOpen = async title => {
-    let locations = this.state.locations
-    let index = locations.findIndex(location => location.title === title)
+    const locations = this.state.locations
+    const index = locations.findIndex(location => location.title === title)
     let location = locations[index]
+
     await wikipediaAPI.getDetails(title)
     .then(response => response.json())
     .then(data => {
-      let key = Object.keys(data.query.pages).pop()
-      let pages = data.query.pages[key]
+      const key = Object.keys(data.query.pages).pop()
+      const pages = data.query.pages[key]
       location.text = pages.extract
-      this.setState({dialog: location})
+      this.setState({dialog: location, center: location.pos})
     })
     .catch((error) => {
       this.setState({dialog: {
         title: `Something went wrong!`,
-        text: `can't load wikipedia data`
+        text: `Can't load wikipedia data`
       }})
     })
   }
@@ -121,15 +91,107 @@ class App extends Component {
     }})
   }
 
+  navMarker = location => {
+    const { google, map } = this.state
+    this.state.markers.map(
+      v => {
+        if (location.title === v.marker.title)
+          this.state.google.maps.event.trigger(v.marker, 'click')
+        return v
+      }
+    )
+    map.panTo(new google.maps.LatLng(location.pos[0], location.pos[1]))
+  }
+
+  onReady = (mapProps, map) => {
+    const {google} = mapProps
+    this.setState({google, map})
+    this.initMarkers()
+  }
+
+  toggleBounceMarker = marker => {
+    if (marker.getAnimation() !== null) {
+      marker.setAnimation(null)
+    } else {
+      marker.setAnimation(this.state.google.maps.Animation.BOUNCE)
+    }
+  }
+
+  addMarker = marker => {
+    marker.setMap(this.state.map)
+  }
+
+  addMarkers = marker => {
+    this.state.markers.map(v => v.marker.setMap(this.state.map))
+  }
+
+  removeMarker = marker => {
+    marker.setMap(null)
+  }
+
+  removeMarkers = () => {
+    this.state.markers.map(v => v.marker.setMap(null))
+  }
+
+  getMarker = title => {
+    return this.state.markers
+      .filter(v =>v.marker.title === title).pop().marker.setMap(this.state.map)
+  }
+
+  initMarkers = () => {
+    const { google, map, locations } = this.state
+    const markers = []
+    locations.map(
+      (location, index) => {
+        let infowindow = new google.maps.InfoWindow({
+          content: '<div id="infowindow"></div>'
+        })
+        let marker = new google.maps.Marker({
+          position: new google.maps.LatLng(location.pos[0],location.pos[1]),
+          animation: google.maps.Animation.DROP,
+          title: location.title
+        })
+        markers.push({marker: marker, infowindow: infowindow})
+        //marker.setMap(map)
+        marker.addListener('click', () => {
+          infowindow.open(map, marker)
+          this.closeInfoWindow(map, marker)
+          this.toggleBounceMarker(marker)
+          ReactDOM.render(
+            <InfoWindow
+              onDialogOpen={this.onDialogOpen}
+              location={location} />,
+          document.getElementById('infowindow'))
+        })
+        infowindow.addListener('closeclick', () => {
+          marker.setAnimation(null);
+        })
+        if (index + 1 === locations.length)
+          this.setState({ markers: markers, isReady: true })
+        return location
+      }
+    )
+  }
+
+  closeInfoWindow = (map, marker) => {
+    this.state.markers.map(v => {
+      if (v.marker.title === marker.title) return v;
+      v.infowindow.close(map, v.marker)
+      v.marker.setAnimation(null)
+      return v
+    })
+  }
+
   render() {
     const { query, locations } = this.state
 
     let showingLocations
     let center
     if (query) {
+      this.removeMarkers()
       const match = new RegExp(escapeRegExp(query), 'i')
-      showingLocations = locations
-        .filter(location => match.test(location.title))
+      showingLocations = locations.filter(
+        location =>  match.test(location.title))
       center = showingLocations.length
       ? showingLocations[showingLocations.length-1].pos
       : this.state.center
@@ -138,7 +200,7 @@ class App extends Component {
       center = this.state.center
     }
 
-    showingLocations.sort(sortBy('title'));
+    showingLocations.sort(sortBy('title'))
 
     return (
       <div className="App">
@@ -148,7 +210,7 @@ class App extends Component {
           className="skip-link">skip to search bar</a>
         <div className="header">
           <Navigation
-            onToggleBounce={this.onToggleBounce}
+            navMarker={this.navMarker}
             updateQuery={this.updateQuery}
             locations={showingLocations}
           />
@@ -158,14 +220,24 @@ class App extends Component {
           dialog={this.state.dialog}/>
         <div tabIndex="-1" role="application" aria-label="Map from GoogleMaps" className="maps">
           <Map
-            showingInfoWindow={this.state.showingInfoWindow}
-            onToggleInfo={this.onToggleInfo}
-            onToggleBounce={this.onToggleBounce}
-            onDialogOpen={this.onDialogOpen}
+            onReady={this.onReady}
             center={center}
             locations={showingLocations}
             onError={this.onError}
           />
+          {this.state.isReady && (
+            <div>
+              {showingLocations.map(
+                location => (
+                <Marker
+                  key={location.id}
+                  location={location}
+                  map={this.state.map}
+                  addMarker={this.addMarker}
+                  markers={this.state.markers} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );

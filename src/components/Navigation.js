@@ -45,7 +45,7 @@ class Navigation extends Component {
                 <a
                   onClick={event => {
                     event.preventDefault()
-                    this.props.onToggleBounce(location.id)
+                    this.props.navMarker(location)
                   }}
                   href="">
                     {location.title}
@@ -59,4 +59,4 @@ class Navigation extends Component {
   }
 }
 
-export default Navigation;
+export default Navigation
