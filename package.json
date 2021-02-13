@@ -19,7 +19,7 @@
     "watch-css": "nodemon -e scss -x \"npm run build-css\""
   },
   "devDependencies": {
-    "dompurify": "^1.0.8",
+    "dompurify": "^2.0.15",
     "node-sass": "^4.9.3",
     "nodemon": "^1.18.4"
   }
